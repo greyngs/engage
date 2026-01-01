@@ -8,8 +8,16 @@ use clap::{Parser, Subcommand};
 )]
 pub struct Cli {
     /// Mute audible alerts
-    #[arg(long, short = 'm')]
+    #[arg(long, short = 'm', global = true)]
     pub mute: bool,
+
+    /// Use ASCII font (Figlet) instead of Block characters
+    #[arg(long, global = true)]
+    pub ascii: bool,
+
+    /// Use simple console output (no TUI)
+    #[arg(long, global = true)]
+    pub simple: bool,
 
     #[command(subcommand)]
     pub command: Commands,

@@ -7,3 +7,6 @@ edition = "2024"
 clap = { version = "4.5.53", features = ["derive"] }
 crossterm = "0.27"
 chrono = "0.4"
+ratatui = "0.30.0"
+tui-big-text = "0.8.1"
+figlet-rs = "0.1.5"

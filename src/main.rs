@@ -1,6 +1,7 @@
 mod app;
 mod cli;
 mod utils;
+mod tui;
 
 use app::{App, AppMode, PomodoroConfig, PomodoroPhase};
 use clap::Parser;
@@ -24,11 +25,18 @@ fn main() -> io::Result<()> {
             AppMode::Timer { target: seconds }
         }
         cli::Commands::Pomodoro { focus, short, long } => {
-            println!(
-                "Config: Focus {}m, Short Break {}m, Long Break {}m",
-                focus, short, long
-            );
-            std::thread::sleep(Duration::from_secs(1));
+            // Only print kickoff config in simple mode or before TUI init
+            if args.simple {
+                println!(
+                    "Config: Focus {}m, Short Break {}m, Long Break {}m",
+                    focus, short, long
+                );
+            }
+            // Small delay only for simple mode to read config if desired, 
+            // but for TUI it's better to start immediately.
+            if args.simple {
+                std::thread::sleep(Duration::from_secs(1));
+            }
 
             AppMode::Pomodoro {
                 phase: PomodoroPhase::Focus,
@@ -47,18 +55,32 @@ fn main() -> io::Result<()> {
 
     let mut app = App::new(initial_mode, args.mute);
 
-    // Setup Terminal
-    enable_raw_mode()?;
-    if let Err(e) = run_loop(&mut app) {
+    if args.simple {
+        // Run Original Simple Mode
+        enable_raw_mode()?;
+        if let Err(e) = run_simple_loop(&mut app) {
+            disable_raw_mode()?;
+            eprintln!("Error: {}", e);
+            return Err(e);
+        }
         disable_raw_mode()?;
-        eprintln!("Error: {}", e);
-        return Err(e);
+    } else {
+        // Run Ratatui Mode (Block or ASCII)
+        // Raw mode is handled inside run_tui or wrapping it
+        enable_raw_mode()?;
+        if let Err(e) = tui::run_tui(&mut app, args.ascii) {
+            disable_raw_mode()?;
+            eprintln!("Error: {}", e);
+            return Err(e);
+        }
+        disable_raw_mode()?;
     }
-    disable_raw_mode()?;
+
     Ok(())
 }
 
-fn run_loop(app: &mut App) -> io::Result<()> {
+// Renamed from run_loop to run_simple_loop
+fn run_simple_loop(app: &mut App) -> io::Result<()> {
     let mut time_accumulated = Duration::ZERO;
     let mut last_tick = Instant::now();
     let mut current_target = app.get_target_duration();
@@ -109,12 +131,12 @@ fn run_loop(app: &mut App) -> io::Result<()> {
                 }
             }
 
-        draw_ui(app, elapsed_secs, current_target)?;
+        draw_simple_ui(app, elapsed_secs, current_target)?;
     }
     Ok(())
 }
 
-fn draw_ui(app: &App, elapsed: u64, target: Option<u64>) -> io::Result<()> {
+fn draw_simple_ui(app: &App, elapsed: u64, target: Option<u64>) -> io::Result<()> {
     // Calculate display time (Count down or Count up)
     let display_value = match target {
         Some(t) => t.saturating_sub(elapsed),
@@ -140,6 +162,10 @@ fn draw_ui(app: &App, elapsed: u64, target: Option<u64>) -> io::Result<()> {
         let now = chrono::Local::now();
         let format = if show_seconds { "%H:%M:%S" } else { "%H:%M" };
         now.format(format).to_string()
+    } else if let AppMode::Pomodoro { .. } = app.mode {
+        let h = display_value / 3600;
+        let m = (display_value % 3600) / 60;
+        format!("{:02}:{:02}", h, m)
     } else {
         utils::format_time(display_value)
     };
