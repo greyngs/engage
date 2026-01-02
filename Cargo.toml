@@ -5,7 +5,7 @@ edition = "2024"
 description = "A minimalist CLI timer, clock, stopwatch, and Pomodoro tool for focused productivity."
 license = "MIT"
 repository = "https://github.com/greyngs/engage"
-keywords = ["timer", "clock", "pomodoro", "cli", "terminal", "tui"]
+keywords = ["timer", "clock", "pomodoro", "cli", "terminal"]
 categories = ["command-line-utilities"]
 
 [[bin]]
